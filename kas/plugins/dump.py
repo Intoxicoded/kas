@@ -188,6 +188,9 @@ class Dump(Checkout):
         parser.add_argument('-i', '--inplace',
                             action='store_true',
                             help=argparse.SUPPRESS)
+        parser.add_argument('--extended-config',
+                            action='store_true',
+                            help='Include extended data from schema extensions')
 
     @staticmethod
     def dump_config(config: dict, target: IoTarget, format: str, indent: int,
@@ -275,6 +278,9 @@ class Dump(Checkout):
 
         if args.resolve_env and 'env' in config_expanded:
             config_expanded['env'] = ctx.config.get_environment()
+
+        if args.extended_config and not args.lock:
+            config_expanded |= ctx.config.get_ext_config()
 
         self.dump_config(config_expanded, output, args.format, args.indent,
                          args.sort)

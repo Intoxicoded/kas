@@ -47,6 +47,7 @@ class Config:
         self._override_task = task
         self._build_dir = ctx.build_dir
         self.__config = {}
+        self.__ext_config = {}
         if not filename:
             filename = os.path.join(ctx.kas_work_dir, CONFIG_YAML_FILE)
 
@@ -76,7 +77,7 @@ class Config:
             Returns repos that are in config but not on disk and updates
             the internal config dictionary.
         """
-        (self.__config, missing_repo_names) = \
+        (self.__config, missing_repo_names, self.__ext_config) = \
             self.handler.get_config(repos=repo_paths)
 
         return missing_repo_names
@@ -94,6 +95,9 @@ class Config:
                 config.update(overrides)
                 del config['overrides']
         return config
+
+    def get_ext_config(self):
+        return copy.deepcopy(self.__ext_config)
 
     def get_lockfiles(self):
         """

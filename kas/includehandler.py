@@ -39,6 +39,7 @@ from jsonschema.validators import validator_for
 
 from .kasusererror import KasUserError
 from .repos import Repo
+from .extensions import KAS_EXTENDED_SCHEMA
 from . import __file_version__, __compatible_file_version__, __version__
 from . import CONFIGSCHEMA
 
@@ -70,6 +71,7 @@ class ConfigFile():
     def __init__(self, filename, is_external, is_lockfile):
         self.filename = Path(filename)
         self.config = {}
+        self.ext_config = {}
         # src_dir must only be set by auto-generated config file
         self.src_dir = None
         self.is_external = is_external
@@ -101,7 +103,7 @@ class ConfigFile():
 
         validator_class = validator_for(CONFIGSCHEMA)
         validator = validator_class(CONFIGSCHEMA)
-        validation_error = False
+        validation_error = not cf.load_extended_config()
 
         for error in sorted(validator.iter_errors(cf.config), key=str):
             validation_error = True
@@ -137,6 +139,36 @@ class ConfigFile():
 
         cf.src_dir = cf.config.get(SOURCE_DIR_OVERRIDE_KEY, None)
         return cf
+
+
+    def load_extended_config(self):
+        """
+            Load config extensions and validate new properties separately
+
+            Returns false if no validation errors are detected
+        """
+        validated = True
+        for name, ext_schema in KAS_EXTENDED_SCHEMA.items():
+            # Use the schema keys to prune the config of only expected values
+            ext_properties = {} 
+            logging.info(f"loading extended config {name}")
+        
+            for key in ext_schema.root_properties():
+                if key in self.config:
+                    val = self.config[key]
+                    logging.debug(f"Found extended property {key} = {json.dumps(val)}")
+                    ext_properties[key] = val
+                    self.ext_config[key] = val
+                    del self.config[key]
+
+            validated |= ext_schema.validate(ext_properties)
+
+
+        if self.ext_config:
+            logging.debug("Loaded extended data")
+            logging.debug("\n%s", json.dumps(self.ext_config))
+
+        return validated
 
 
 class IncludeHandler:
@@ -209,10 +241,11 @@ class IncludeHandler:
           repos -- A dictionary that maps repo names to directory paths
 
         Returns:
-          (config, repos)
+          (config, repos, ext_config)
             config -- A dictionary containing the configuration
             repos -- A list of missing repo names that are needed \
-                     to create a complete configuration
+                    to create a complete configuration
+            ext_config -- A dictionary containing the extended configuration
         """
 
         repos = repos or {}
@@ -382,8 +415,13 @@ class IncludeHandler:
 
         config = functools.reduce(_internal_dict_merge,
                                   map(lambda x: x.config, config_files))
+
+        
+        ext_config = functools.reduce(_internal_dict_merge,
+                                      map(lambda x: x.ext_config, config_files))
+
         # the merged config must have the highest (used) version number
         header_version = max([int(cfg.config['header']['version'])
                               for cfg in config_files])
         config['header']['version'] = header_version
-        return config, missing_repos
+        return config, missing_repos, ext_config

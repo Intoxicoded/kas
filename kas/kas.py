@@ -44,6 +44,7 @@ except ImportError:
 
 from . import __version__, __file_version__, __compatible_file_version__
 from . import plugins
+from . import extensions
 
 __license__ = 'MIT'
 __copyright__ = 'Copyright (c) Siemens AG, 2017-2018'
@@ -124,7 +125,8 @@ def kas_get_argparser():
     # Load plugins here so that the commands and arguments introduced by the
     # plugins can be seen by sphinx when it calls this function to build the
     # documentation
-    plugins.load()
+    extensions.verify_extensions()
+    plugins.load(extensions.KAS_EXTENDED_PLUGINS.values())
 
     parser = argparse.ArgumentParser(description='kas - setup tool for '
                                      'bitbake based project')

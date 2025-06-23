@@ -34,7 +34,7 @@ def register_plugins(mod):
         PLUGINS[plugin.name] = plugin
 
 
-def load():
+def load(external):
     """
         Import all kas plugins
     """
@@ -58,6 +58,9 @@ def load():
     register_plugins(lock)
     register_plugins(menu)
     register_plugins(shell)
+
+    for plugin in external:
+        register_plugins(plugin)
 
 
 def get(name):
